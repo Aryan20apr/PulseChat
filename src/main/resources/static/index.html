@@ -219,6 +219,7 @@
         
         <div id="connectionStatus" class="connection-status status-disconnected">
             Disconnected
+            <button id="reconnectButton" style="margin-left: 10px; padding: 4px 8px; border: none; border-radius: 4px; background: #007bff; color: white; font-size: 11px; cursor: pointer;">Reconnect</button>
         </div>
         
         <div id="messages" class="messages"></div>
@@ -252,8 +253,10 @@
             constructor() {
                 this.ws = null;
                 this.isConnected = false;
+                this.intentionalDisconnect = false;
                 this.typingTimeout = null;
                 this.activeTypers = new Set();
+                this.lastConnectionParams = null;
                 
                 this.initElements();
                 this.bindEvents();
@@ -263,6 +266,7 @@
             initElements() {
                 this.elements = {
                     connectionStatus: document.getElementById('connectionStatus'),
+                    reconnectButton: document.getElementById('reconnectButton'),
                     messages: document.getElementById('messages'),
                     typingIndicator: document.getElementById('typingIndicator'),
                     typingText: document.getElementById('typingText'),
@@ -276,6 +280,7 @@
             
             bindEvents() {
                 this.elements.sendButton.addEventListener('click', () => this.sendMessage());
+                this.elements.reconnectButton.addEventListener('click', () => this.connect());
                 this.elements.messageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
                         this.sendMessage();
@@ -329,8 +334,11 @@
             
             connect() {
                 if (this.ws) {
+                    this.intentionalDisconnect = true;  // Mark as intentional
                     this.ws.close();
                 }
+                
+                this.intentionalDisconnect = false;  // Reset flag
                 
                 const userId = this.elements.userIdInput.value || 'anonymous';
                 const username = this.elements.usernameInput.value || 'Anonymous';
@@ -351,15 +359,20 @@
                     this.addSystemMessage('Connected to chat');
                 };
                 
-                this.ws.onclose = () => {
+                this.ws.onclose = (event) => {
                     this.isConnected = false;
                     this.updateConnectionStatus(false);
                     this.elements.messageInput.disabled = true;
                     this.elements.sendButton.disabled = true;
-                    this.addSystemMessage('Disconnected from chat');
+                    this.addSystemMessage(`Disconnected from chat (Code: ${event.code})`);
                     
-                    // Auto-reconnect after 3 seconds
-                    setTimeout(() => this.connect(), 3000);
+                    // Only auto-reconnect on unexpected disconnections, not normal closes
+                    if (event.code !== 1000 && event.code !== 1001 && !this.intentionalDisconnect) {
+                        console.log('Unexpected disconnect, reconnecting in 3 seconds...');
+                        setTimeout(() => this.connect(), 3000);
+                    } else {
+                        console.log('Normal disconnect, not reconnecting automatically');
+                    }
                 };
                 
                 this.ws.onmessage = (event) => {
