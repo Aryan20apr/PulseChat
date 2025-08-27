@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +24,7 @@
         .chat-container {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             height: 600px;
             display: flex;
             flex-direction: column;
@@ -124,9 +125,17 @@
             animation: typingDots 1.4s infinite ease-in-out;
         }
 
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        .typing-dot:nth-child(3) { animation-delay: 0s; }
+        .typing-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0s;
+        }
 
         .input-container {
             padding: 20px;
@@ -196,6 +205,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -203,10 +213,14 @@
         }
 
         @keyframes typingDots {
-            0%, 80%, 100% {
+
+            0%,
+            80%,
+            100% {
                 transform: scale(0);
                 opacity: 0.5;
             }
+
             40% {
                 transform: scale(1);
                 opacity: 1;
@@ -214,19 +228,21 @@
         }
     </style>
 </head>
+
 <body>
     <div class="chat-container">
         <div class="chat-header">
             WhatsApp-Style Real-Time Chat
         </div>
-        
+
         <div id="connectionStatus" class="connection-status status-disconnected">
             Disconnected
-            <button id="reconnectButton" style="margin-left: 10px; padding: 4px 8px; border: none; border-radius: 4px; background: #007bff; color: white; font-size: 11px; cursor: pointer;">Reconnect</button>
+            <button id="reconnectButton"
+                style="margin-left: 10px; padding: 4px 8px; border: none; border-radius: 4px; background: #007bff; color: white; font-size: 11px; cursor: pointer;">Reconnect</button>
         </div>
-        
+
         <div id="messages" class="messages"></div>
-        
+
         <div id="typingIndicator" class="typing-indicator" style="display: none;">
             <span id="typingText">Someone is typing</span>
             <div class="typing-dots">
@@ -235,7 +251,7 @@
                 <div class="typing-dot"></div>
             </div>
         </div>
-        
+
         <div class="input-container">
             <div class="user-info">
                 <input type="text" id="userIdInput" placeholder="Your User ID" value="user123">
@@ -246,7 +262,7 @@
                 <input type="text" id="messageInput" class="message-input" placeholder="Type a message..." disabled>
                 <button id="sendButton" class="send-button" disabled>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                     </svg>
                 </button>
             </div>
@@ -262,12 +278,15 @@
                 this.typingTimeout = null;
                 this.activeTypers = new Set();
                 this.lastConnectionParams = null;
-                
+                this.isTyping = false;
+                this.lastTypingStartAt = 0;
+                this.typingThrottleMs = 800;
+
                 this.initElements();
                 this.bindEvents();
                 this.connect();
             }
-            
+
             initElements() {
                 this.elements = {
                     connectionStatus: document.getElementById('connectionStatus'),
@@ -282,18 +301,18 @@
                     chatIdInput: document.getElementById('chatIdInput')
                 };
             }
-            
+
             bindEvents() {
                 this.elements.sendButton.addEventListener('click', () => this.sendMessage());
                 this.elements.reconnectButton.addEventListener('click', () => this.connect());
                 this.elements.messageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
                         this.sendMessage();
-                    } else {
+                    } /*else {
                         this.handleTyping();
-                    }
+                    }*/
                 });
-                
+
                 this.elements.messageInput.addEventListener('input', () => {
                     if (this.elements.messageInput.value.trim()) {
                         this.handleTyping();
@@ -301,7 +320,7 @@
                         this.stopTyping();
                     }
                 });
-                
+
                 // Stop typing when user stops typing for 2 seconds
                 this.elements.messageInput.addEventListener('keyup', () => {
                     clearTimeout(this.typingTimeout);
@@ -309,7 +328,7 @@
                         this.stopTyping();
                     }, 2000);
                 });
-                
+
                 // Connect when user info changes (only on blur/enter)
                 [this.elements.userIdInput, this.elements.usernameInput, this.elements.chatIdInput].forEach(input => {
                     input.addEventListener('blur', () => {
@@ -324,40 +343,40 @@
                     });
                 });
             }
-            
+
             shouldReconnect() {
                 const currentUserId = this.elements.userIdInput.value || 'anonymous';
                 const currentUsername = this.elements.usernameInput.value || 'Anonymous';
                 const currentChatId = this.elements.chatIdInput.value || 'general';
-                
+
                 // Only reconnect if values actually changed and are different from current connection
                 if (this.lastConnectionParams) {
-                    return (this.lastConnectionParams.userId !== currentUserId || 
-                            this.lastConnectionParams.username !== currentUsername ||
-                            this.lastConnectionParams.chatId !== currentChatId);
+                    return (this.lastConnectionParams.userId !== currentUserId ||
+                        this.lastConnectionParams.username !== currentUsername ||
+                        this.lastConnectionParams.chatId !== currentChatId);
                 }
                 return true;
             }
-            
+
             connect() {
                 if (this.ws) {
                     this.intentionalDisconnect = true;  // Mark as intentional
                     this.ws.close();
                 }
-                
+
                 this.intentionalDisconnect = false;  // Reset flag
-                
+
                 const userId = this.elements.userIdInput.value || 'anonymous';
                 const username = this.elements.usernameInput.value || 'Anonymous';
                 const chatId = this.elements.chatIdInput.value || 'general';
-                
+
                 const wsUrl = `ws://localhost:8080/chat?userId=${userId}&username=${encodeURIComponent(username)}&chatId=${chatId}`;
-                
+
                 // Store connection params to avoid unnecessary reconnections
                 this.lastConnectionParams = { userId, chatId, username };
-                
+
                 this.ws = new WebSocket(wsUrl);
-                
+
                 this.ws.onopen = () => {
                     this.isConnected = true;
                     this.updateConnectionStatus(true);
@@ -365,14 +384,14 @@
                     this.elements.sendButton.disabled = false;
                     this.addSystemMessage('Connected to chat');
                 };
-                
+
                 this.ws.onclose = (event) => {
                     this.isConnected = false;
                     this.updateConnectionStatus(false);
                     this.elements.messageInput.disabled = true;
                     this.elements.sendButton.disabled = true;
                     this.addSystemMessage(`Disconnected from chat (Code: ${event.code})`);
-                    
+
                     // Only auto-reconnect on unexpected disconnections, not normal closes
                     if (event.code !== 1000 && event.code !== 1001 && !this.intentionalDisconnect) {
                         console.log('Unexpected disconnect, reconnecting in 3 seconds...');
@@ -381,7 +400,7 @@
                         console.log('Normal disconnect, not reconnecting automatically');
                     }
                 };
-                
+
                 this.ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
@@ -390,17 +409,17 @@
                         console.error('Error parsing message:', e);
                     }
                 };
-                
+
                 this.ws.onerror = (error) => {
                     console.error('WebSocket error:', error);
                     this.addSystemMessage('Connection error');
                 };
             }
-            
+
             handleMessage(data) {
                 console.log('Received message:', data); // Debug log
                 const currentUserId = this.elements.userIdInput.value;
-                
+
                 switch (data.type) {
                     case 'typing_start':
                         console.log('Typing start from:', data.userId, 'current user:', currentUserId);
@@ -409,7 +428,7 @@
                             this.updateTypingIndicator();
                         }
                         break;
-                        
+
                     case 'typing_stop':
                         console.log('Typing stop from:', data.userId);
                         if (data.userId !== currentUserId) {
@@ -417,7 +436,7 @@
                             this.updateTypingIndicator();
                         }
                         break;
-                        
+
                     case 'message':
                         console.log('Chat message from:', data.userId);
                         this.addChatMessage(data);
@@ -425,17 +444,17 @@
                         this.activeTypers.delete(data.username || data.userId);
                         this.updateTypingIndicator();
                         break;
-                        
+
                     default:
                         console.log('Unknown message type:', data.type);
                 }
             }
-            
+
             updateTypingIndicator() {
                 if (this.activeTypers.size > 0) {
                     const typers = Array.from(this.activeTypers);
                     let text;
-                    
+
                     if (typers.length === 1) {
                         text = `${typers[0]} is typing`;
                     } else if (typers.length === 2) {
@@ -443,36 +462,36 @@
                     } else {
                         text = `${typers.length} people are typing`;
                     }
-                    
+
                     this.elements.typingText.textContent = text;
                     this.elements.typingIndicator.style.display = 'flex';
                 } else {
                     this.elements.typingIndicator.style.display = 'none';
                 }
             }
-            
+
             addChatMessage(data) {
                 const currentUserId = this.elements.userIdInput.value;
                 const isOwn = data.userId === currentUserId;
-                
+
                 const messageElement = document.createElement('div');
                 messageElement.className = `message ${isOwn ? 'own' : 'other'}`;
-                
+
                 const time = new Date(data.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit'
                 });
-                
+
                 messageElement.innerHTML = `
                     ${!isOwn ? `<div class="message-sender">${data.username || data.userId}</div>` : ''}
                     <div class="message-content">${this.escapeHtml(data.content)}</div>
                     <div class="message-time">${time}</div>
                 `;
-                
+
                 this.elements.messages.appendChild(messageElement);
                 this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
             }
-            
+
             addSystemMessage(text) {
                 const messageElement = document.createElement('div');
                 messageElement.style.cssText = `
@@ -483,46 +502,59 @@
                     font-style: italic;
                 `;
                 messageElement.textContent = text;
-                
+
                 this.elements.messages.appendChild(messageElement);
                 this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
             }
-            
+
             sendMessage() {
                 if (!this.isConnected || !this.elements.messageInput.value.trim()) {
                     return;
                 }
-                
+
                 const message = {
                     type: 'message',
                     content: this.elements.messageInput.value.trim()
                 };
-                
+
                 this.ws.send(JSON.stringify(message));
                 this.elements.messageInput.value = '';
                 this.stopTyping();
             }
-            
+
             handleTyping() {
                 if (!this.isConnected) return;
-                
-                const message = {
-                    type: 'typing_start'
-                };
-                
-                this.ws.send(JSON.stringify(message));
+
+                // const message = {
+                //     type: 'typing_start'
+                // };
+
+                // this.ws.send(JSON.stringify(message));
+
+                const now = Date.now();
+                if (!this.isTyping || (now - this.lastTypingStartAt) > this.typingThrottleMs) {
+                    this.ws.send(JSON.stringify({ type: 'typing_start' }));
+                    this.isTyping = true;
+                    this.lastTypingStartAt = now;
+                }
+
+                // reset the stop debounce window on every keystroke
+                clearTimeout(this.typingTimeout);
+                this.typingTimeout = setTimeout(() => this.stopTyping(), 2000);
             }
-            
+
             stopTyping() {
                 if (!this.isConnected) return;
-                
+                if (!this.isTyping) return;
+
                 const message = {
                     type: 'typing_stop'
                 };
-                
+
                 this.ws.send(JSON.stringify(message));
+                this.isTyping = false;
             }
-            
+
             updateConnectionStatus(connected) {
                 if (connected) {
                     this.elements.connectionStatus.textContent = 'Connected';
@@ -532,18 +564,19 @@
                     this.elements.connectionStatus.className = 'connection-status status-disconnected';
                 }
             }
-            
+
             escapeHtml(text) {
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
             }
         }
-        
+
         // Initialize the chat when page loads
         document.addEventListener('DOMContentLoaded', () => {
             new RealtimeChat();
         });
     </script>
 </body>
+
 </html>

@@ -28,6 +28,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     // Store active WebSocket sessions
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, String> userSessions = new ConcurrentHashMap<>(); // userId -> sessionId
+    private final Map<String, java.util.concurrent.ExecutorService> sendQueues = new ConcurrentHashMap<>();
     
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -36,6 +37,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         
         sessions.put(session.getId(), session);
         userSessions.put(userId, session.getId());
+        sendQueues.put(session.getId(), java.util.concurrent.Executors.newSingleThreadExecutor());
         
         System.out.println("User " + userId + " connected to chat " + chatId);
         
@@ -77,6 +79,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         
         sessions.remove(session.getId());
         userSessions.remove(userId);
+
+        java.util.concurrent.ExecutorService q = sendQueues.remove(session.getId());
+        if (q != null) q.shutdownNow();
         
         // Send typing stop event when user disconnects
         handleTypingEvent(chatId, userId, getUsernameFromSession(session), "typing_stop");
@@ -181,13 +186,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         // Send message to all users in this chat who are connected to THIS server
         sessions.values().forEach(session -> {
             if (session.isOpen() && getChatIdFromSession(session).equals(chatId)) {
-                try {
-                    String json = objectMapper.writeValueAsString(message);
-                    session.sendMessage(new TextMessage(json));
-                    System.out.println("Sent message to session: " + session.getId());
-                } catch (Exception e) {
-                    System.err.println("Error sending message to session: " + e.getMessage());
-                }
+                java.util.concurrent.ExecutorService q = sendQueues.get(session.getId());
+                if (q == null) return;
+    
+                q.submit(() -> {
+                    try {
+                        String chatMessage = objectMapper.writeValueAsString(message);
+                        session.sendMessage(new TextMessage(chatMessage));
+                        System.out.println("Sent message to session: " + session.getId());
+                    } catch (Exception e) {
+                        System.err.println("Error sending message to session: " + e.getMessage());
+                    }
+                });
             }
         });
     }
