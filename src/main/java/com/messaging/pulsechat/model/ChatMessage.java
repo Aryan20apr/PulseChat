@@ -16,6 +16,7 @@ public class ChatMessage {
     private String username;
     private String content;
     private long timestamp;
+    private String type;
 
     public ChatMessage(String chatId, String userId, String username, String content) {
         this.chatId = chatId;
@@ -23,5 +24,6 @@ public class ChatMessage {
         this.username = username;
         this.content = content;
         this.timestamp = System.currentTimeMillis();
+        this.type = "message";
     }
 }

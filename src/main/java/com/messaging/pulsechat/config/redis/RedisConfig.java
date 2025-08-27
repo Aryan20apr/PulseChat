@@ -14,14 +14,13 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 @Configuration
 @EnableRedisRepositories
 public class RedisConfig {
-
+    
     @Bean
-    public RedisConnectionFactory connectionFactory(){
+    public RedisConnectionFactory connectionFactory() {
         LettuceConnectionFactory factory = new LettuceConnectionFactory("localhost", 6379);
         return factory;
     }
-
-     
+    
     @Bean
     public RedisTemplate<String, Object> redisTemplate() {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -29,7 +28,7 @@ public class RedisConfig {
         template.setDefaultSerializer(new GenericJackson2JsonRedisSerializer());
         return template;
     }
-
+    
     @Bean
     public RedisMessageListenerContainer container(RedisConnectionFactory connectionFactory,
                                                  MessageListener messageListener) {
@@ -38,5 +37,4 @@ public class RedisConfig {
         container.addMessageListener(messageListener, new PatternTopic("chat:*:events")); // Listen to messaged from multiple channels
         return container;
     }
-    
 }

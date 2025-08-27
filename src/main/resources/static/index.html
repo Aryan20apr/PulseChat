@@ -24,7 +24,6 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            width: 400px;
             height: 600px;
             display: flex;
             flex-direction: column;
@@ -133,14 +132,18 @@
             padding: 20px;
             background: white;
             border-top: 1px solid #e0e0e0;
-            display: flex;
-            gap: 10px;
         }
 
         .user-info {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .message-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         .user-info input {
@@ -239,12 +242,14 @@
                 <input type="text" id="usernameInput" placeholder="Your Name" value="John Doe">
                 <input type="text" id="chatIdInput" placeholder="Chat ID" value="general">
             </div>
-            <input type="text" id="messageInput" class="message-input" placeholder="Type a message..." disabled>
-            <button id="sendButton" class="send-button" disabled>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-            </button>
+            <div class="message-row">
+                <input type="text" id="messageInput" class="message-input" placeholder="Type a message..." disabled>
+                <button id="sendButton" class="send-button" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -306,27 +311,29 @@
                 });
                 
                 // Connect when user info changes (only on blur/enter)
-                [this.elements.userIdInput, this.elements.chatIdInput].forEach(input => {
+                [this.elements.userIdInput, this.elements.usernameInput, this.elements.chatIdInput].forEach(input => {
                     input.addEventListener('blur', () => {
-                        if (this.shouldReconnect(input)) {
+                        if (this.shouldReconnect()) {
                             this.connect();
                         }
                     });
                     input.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter' && this.shouldReconnect(input)) {
+                        if (e.key === 'Enter' && this.shouldReconnect()) {
                             this.connect();
                         }
                     });
                 });
             }
             
-            shouldReconnect(input) {
+            shouldReconnect() {
                 const currentUserId = this.elements.userIdInput.value || 'anonymous';
+                const currentUsername = this.elements.usernameInput.value || 'Anonymous';
                 const currentChatId = this.elements.chatIdInput.value || 'general';
                 
                 // Only reconnect if values actually changed and are different from current connection
                 if (this.lastConnectionParams) {
                     return (this.lastConnectionParams.userId !== currentUserId || 
+                            this.lastConnectionParams.username !== currentUsername ||
                             this.lastConnectionParams.chatId !== currentChatId);
                 }
                 return true;
@@ -391,10 +398,12 @@
             }
             
             handleMessage(data) {
+                console.log('Received message:', data); // Debug log
                 const currentUserId = this.elements.userIdInput.value;
                 
                 switch (data.type) {
                     case 'typing_start':
+                        console.log('Typing start from:', data.userId, 'current user:', currentUserId);
                         if (data.userId !== currentUserId) {
                             this.activeTypers.add(data.username || data.userId);
                             this.updateTypingIndicator();
@@ -402,6 +411,7 @@
                         break;
                         
                     case 'typing_stop':
+                        console.log('Typing stop from:', data.userId);
                         if (data.userId !== currentUserId) {
                             this.activeTypers.delete(data.username || data.userId);
                             this.updateTypingIndicator();
@@ -409,6 +419,7 @@
                         break;
                         
                     case 'message':
+                        console.log('Chat message from:', data.userId);
                         this.addChatMessage(data);
                         // Remove typing indicator for this user
                         this.activeTypers.delete(data.username || data.userId);

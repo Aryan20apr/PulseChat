@@ -10,13 +10,14 @@ import com.messaging.pulsechat.webSocketComponents.ChatWebSocketHandler;
 
 @Configuration
 @EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer{
+public class WebSocketConfig implements WebSocketConfigurer {
     
     @Autowired
     private ChatWebSocketHandler chatHandler;
-
+    
     @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry){
-        registry.addHandler(chatHandler, "/chat").setAllowedOrigins("*");
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(chatHandler, "/chat")
+                .setAllowedOrigins("*"); // Configure properly for production
     }
 }
