@@ -300,12 +300,31 @@
                     }, 2000);
                 });
                 
-                // Connect when user info changes
+                // Connect when user info changes (only on blur/enter)
                 [this.elements.userIdInput, this.elements.chatIdInput].forEach(input => {
-                    input.addEventListener('change', () => {
-                        this.connect();
+                    input.addEventListener('blur', () => {
+                        if (this.shouldReconnect(input)) {
+                            this.connect();
+                        }
+                    });
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter' && this.shouldReconnect(input)) {
+                            this.connect();
+                        }
                     });
                 });
+            }
+            
+            shouldReconnect(input) {
+                const currentUserId = this.elements.userIdInput.value || 'anonymous';
+                const currentChatId = this.elements.chatIdInput.value || 'general';
+                
+                // Only reconnect if values actually changed and are different from current connection
+                if (this.lastConnectionParams) {
+                    return (this.lastConnectionParams.userId !== currentUserId || 
+                            this.lastConnectionParams.chatId !== currentChatId);
+                }
+                return true;
             }
             
             connect() {
@@ -318,6 +337,9 @@
                 const chatId = this.elements.chatIdInput.value || 'general';
                 
                 const wsUrl = `ws://localhost:8080/chat?userId=${userId}&username=${encodeURIComponent(username)}&chatId=${chatId}`;
+                
+                // Store connection params to avoid unnecessary reconnections
+                this.lastConnectionParams = { userId, chatId, username };
                 
                 this.ws = new WebSocket(wsUrl);
                 
