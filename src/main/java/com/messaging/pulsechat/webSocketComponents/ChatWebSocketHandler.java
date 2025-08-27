@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.CloseStatus;
@@ -15,6 +16,7 @@ import com.messaging.pulsechat.model.ChatMessage;
 import com.messaging.pulsechat.model.Constants;
 import com.messaging.pulsechat.model.TypingEvent;
 
+@Component
 public class ChatWebSocketHandler extends TextWebSocketHandler{
     
     @Autowired
@@ -75,7 +77,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
         userSessions.remove(userId);
         
         // Send typing stop event when user disconnects
-        handleTypingEvent(chatId, userId, getUsernameFromSession(session), "typing_stop");
+        handleTypingEvent(chatId, userId, getUsernameFromSession(session), Constants.TYPING_END);
         
         System.out.println("User " + userId + " disconnected from chat " + chatId);
     }
@@ -124,7 +126,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
         sessions.values().forEach(session -> {
             if (getChatIdFromSession(session).equals(chatId)) {
                 try {
-                    String json = objectMapper.writeValueAsString(message);
+                    String json;
+                if (message instanceof String) {
+                    json = (String) message;
+                } else {
+                    json = objectMapper.writeValueAsString(message);
+                }
                     session.sendMessage(new TextMessage(json));
                 } catch (Exception e) {
                     System.err.println("Error sending message to session: " + e.getMessage());
